@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { errorResponse } from "@/lib/response";
-
+import { RouteContext } from "@/types";
 // ---------------------------------------------------------------------------
 // Context type Next.js passes to dynamic route handlers
 // ---------------------------------------------------------------------------
-type RouteContext = {
-  params: Promise<Record<string, string>>;
-};
+
 
 type RouteHandler = (
   req: NextRequest,
