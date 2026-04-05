@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { env } from "process";
 
 // ---------------------------------------------------------------------------
 // Connection cache — persists across hot reloads in dev & across invocations
@@ -49,7 +50,8 @@ export async function connectDB(): Promise<typeof mongoose> {
         maxPoolSize: 10,       // Max concurrent connections
       })
       .then((mongoose) => {
-        console.log("✅ MongoDB connected");
+        // console.log("url", env.MONGODB_URI);
+        console.log("✅ MongoDB connected successfully");
         return mongoose;
       });
   }

@@ -147,6 +147,8 @@ financialRecordSchema.index({ userId: 1, category: 1, isDeleted: 1 });
 // Date range queries
 financialRecordSchema.index({ userId: 1, date: 1, isDeleted: 1 });
 
+
+
 // ---------------------------------------------------------------------------
 // Query helper — automatically excludes soft-deleted records
 // Attach to every query that should respect soft delete
