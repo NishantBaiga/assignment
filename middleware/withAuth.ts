@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth/jwt";
 import { AppError } from "@/utils/AppError";
 import { errorResponse } from "@/lib/response";
-import { JWTPayload } from "@/types";
+import { JWTPayload, RouteContext } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Augment NextRequest to carry the decoded user payload
@@ -34,9 +34,7 @@ function extractToken(req: NextRequest): string | null {
 // ---------------------------------------------------------------------------
 // withAuth — middleware wrapper
 // ---------------------------------------------------------------------------
-type RouteContext = {
-  params: Promise<Record<string, string>>;
-};
+
 
 type AuthenticatedHandler = (
   req: NextRequest,

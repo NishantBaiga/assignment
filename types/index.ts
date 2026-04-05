@@ -24,6 +24,16 @@ export interface JWTPayload {
   status: UserStatus;
 }
 
+
+// ---------------------------------------------------------------------------
+// Shared RouteContext — use this in ALL route files and middleware
+// params is Record<string, string> so it stays compatible everywhere
+// ---------------------------------------------------------------------------
+export type RouteContext = {
+  params: Promise<Record<string, string>>;
+};
+
+
 // ---------------------------------------------------------------------------
 // Financial record types
 // ---------------------------------------------------------------------------

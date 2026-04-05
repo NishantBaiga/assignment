@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, requireAuth } from "./withAuth";
 import { AppError } from "@/utils/AppError";
 import { errorResponse } from "@/lib/response";
-import { UserRole } from "@/types";
+import { UserRole, RouteContext } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Role hierarchy — higher index = more permissions
@@ -14,9 +14,7 @@ const ROLE_HIERARCHY: Record<UserRole, number> = {
   admin: 2,
 };
 
-type RouteContext = {
-  params: Promise<Record<string, string>>;
-};
+
 
 type AuthenticatedHandler = (
   req: NextRequest,
