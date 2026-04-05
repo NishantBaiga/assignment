@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "npx tsx ./lib/db/seed.ts"
+    
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

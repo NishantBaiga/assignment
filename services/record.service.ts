@@ -1,6 +1,9 @@
 import { connectDB } from "@/lib/db/connect";
 import { AppError } from "@/utils/AppError";
-import FinancialRecord, { IFinancialRecord } from "@/models/FinancialRecord";
+import FinancialRecord, {
+  IFinancialRecord,
+  notDeleted,
+} from "@/models/FinancialRecord";
 import {
   CreateRecordInput,
   UpdateRecordInput,
@@ -47,13 +50,18 @@ function toSafeRecord(record: IFinancialRecord): SafeRecord {
 // ---------------------------------------------------------------------------
 function buildMatchFilter(
   query: RecordQuery,
-  userId: string
+  userId: string,
 ): Record<string, unknown> {
-  const match: Record<string, unknown> = {
-    userId: new mongoose.Types.ObjectId(userId),
-    isDeleted: false,
-  };
+  // const match: Record<string, unknown> = {
+  //   userId: new mongoose.Types.ObjectId(userId),
+  //   isDeleted: false,
+  // };
 
+  const match: Record<string, unknown> = {
+    ...notDeleted(),
+    userId: new mongoose.Types.ObjectId(userId),
+  };
+  
   if (query.type) match.type = query.type;
   if (query.category) match.category = query.category;
 
@@ -71,13 +79,12 @@ function buildMatchFilter(
 // Record Service
 // ---------------------------------------------------------------------------
 export const recordService = {
-
   // -------------------------------------------------------------------------
   // create
   // -------------------------------------------------------------------------
   async create(
     input: CreateRecordInput,
-    user: JWTPayload
+    user: JWTPayload,
   ): Promise<SafeRecord> {
     await connectDB();
 
@@ -102,7 +109,7 @@ export const recordService = {
   // -------------------------------------------------------------------------
   async list(
     query: RecordQuery,
-    user: JWTPayload
+    user: JWTPayload,
   ): Promise<PaginatedResult<SafeRecord>> {
     await connectDB();
 
@@ -148,30 +155,28 @@ export const recordService = {
   // -------------------------------------------------------------------------
   // getById
   // -------------------------------------------------------------------------
-  async getById(
-    recordId: string,
-    user: JWTPayload
-  ): Promise<SafeRecord> {
+  async getById(recordId: string, user: JWTPayload): Promise<SafeRecord> {
     await connectDB();
 
     if (!mongoose.Types.ObjectId.isValid(recordId)) {
       throw AppError.badRequest("Invalid record ID format");
     }
 
-    const record = await FinancialRecord.findOne({
-      _id: recordId,
-      isDeleted: false,
-    });
+    // const record = await FinancialRecord.findOne({
+    //   _id: recordId,
+    //   isDeleted: false,
+    // });
 
+    const record = await FinancialRecord.findOne({
+      ...notDeleted(),
+      _id: recordId,
+    });
     if (!record) {
       throw AppError.notFound("Financial record");
     }
 
     // Non-admins can only view their own records
-    if (
-      user.role !== "admin" &&
-      record.userId.toString() !== user.userId
-    ) {
+    if (user.role !== "admin" && record.userId.toString() !== user.userId) {
       throw AppError.forbidden("You do not have access to this record");
     }
 
@@ -185,7 +190,7 @@ export const recordService = {
   async update(
     recordId: string,
     input: UpdateRecordInput,
-    user: JWTPayload
+    user: JWTPayload,
   ): Promise<SafeRecord> {
     await connectDB();
 
@@ -193,9 +198,14 @@ export const recordService = {
       throw AppError.badRequest("Invalid record ID format");
     }
 
+    // const record = await FinancialRecord.findOne({
+    //   _id: recordId,
+    //   isDeleted: false,
+    // });
+
     const record = await FinancialRecord.findOne({
+      ...notDeleted(),
       _id: recordId,
-      isDeleted: false,
     });
 
     if (!record) {
@@ -203,10 +213,7 @@ export const recordService = {
     }
 
     // Ownership check for non-admins
-    if (
-      user.role !== "admin" &&
-      record.userId.toString() !== user.userId
-    ) {
+    if (user.role !== "admin" && record.userId.toString() !== user.userId) {
       throw AppError.forbidden("You can only update your own records");
     }
 
@@ -227,19 +234,21 @@ export const recordService = {
   // -------------------------------------------------------------------------
   // softDelete — marks record as deleted without removing from DB
   // -------------------------------------------------------------------------
-  async softDelete(
-    recordId: string,
-    user: JWTPayload
-  ): Promise<void> {
+  async softDelete(recordId: string, user: JWTPayload): Promise<void> {
     await connectDB();
 
     if (!mongoose.Types.ObjectId.isValid(recordId)) {
       throw AppError.badRequest("Invalid record ID format");
     }
 
+    // const record = await FinancialRecord.findOne({
+    //   _id: recordId,
+    //   isDeleted: false,
+    // });
+
     const record = await FinancialRecord.findOne({
+      ...notDeleted(),
       _id: recordId,
-      isDeleted: false,
     });
 
     if (!record) {
@@ -247,10 +256,7 @@ export const recordService = {
     }
 
     // Ownership check for non-admins
-    if (
-      user.role !== "admin" &&
-      record.userId.toString() !== user.userId
-    ) {
+    if (user.role !== "admin" && record.userId.toString() !== user.userId) {
       throw AppError.forbidden("You can only delete your own records");
     }
 

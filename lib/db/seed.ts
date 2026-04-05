@@ -2,7 +2,13 @@ import mongoose from "mongoose";
 import { connectDB } from "./connect";
 import User from "@/models/Users";
 import { hashPassword } from "@/lib/auth/password";
+import { loadEnvConfig } from '@next/env';
 
+const projectDir = process.cwd();
+loadEnvConfig(projectDir);
+
+
+// console.log("🔄 Starting database seed..." , process.env.MONGODB_URI);
 async function seed() {
   await connectDB();
 

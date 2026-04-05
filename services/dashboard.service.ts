@@ -1,5 +1,5 @@
 import { connectDB } from "@/lib/db/connect";
-import FinancialRecord from "@/models/FinancialRecord";
+import FinancialRecord, { notDeleted } from "@/models/FinancialRecord";
 import { DashboardQuery } from "@/schemas/record.schema";
 import { JWTPayload } from "@/types";
 import mongoose, { PipelineStage } from "mongoose";
@@ -12,8 +12,12 @@ function buildBaseMatch(
   role: string,
   query?: Partial<DashboardQuery>
 ): Record<string, unknown> {
-  const match: Record<string, unknown> = {
-    isDeleted: false,
+  // const match: Record<string, unknown> = {
+  //   isDeleted: false,
+  // };
+
+   const match: Record<string, unknown> = {
+    ...notDeleted(),
   };
 
   if (role !== "admin") {

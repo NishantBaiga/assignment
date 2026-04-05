@@ -1,6 +1,8 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 import { RecordType } from "@/types";
 
+
+
 // ---------------------------------------------------------------------------
 // Interface
 // ---------------------------------------------------------------------------
@@ -153,10 +155,10 @@ financialRecordSchema.index({ userId: 1, date: 1, isDeleted: 1 });
 // Query helper — automatically excludes soft-deleted records
 // Attach to every query that should respect soft delete
 // ---------------------------------------------------------------------------
-financialRecordSchema.query.notDeleted =
-  function (this: mongoose.Query<unknown, IFinancialRecord>) {
-    return this.where({ isDeleted: false });
-  };
+// financialRecordSchema.query.notDeleted =
+//   function (this: mongoose.Query<unknown, IFinancialRecord>) {
+//     return this.where({ isDeleted: false });
+//   };
 
 // ---------------------------------------------------------------------------
 // Static — soft delete helper
@@ -191,3 +193,7 @@ const FinancialRecord =
   );
 
 export default FinancialRecord;
+
+export function notDeleted(): { isDeleted: { $ne: boolean } } {
+  return { isDeleted: { $ne: true } };
+}
