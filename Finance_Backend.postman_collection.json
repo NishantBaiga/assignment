@@ -1,0 +1,1752 @@
+{
+  "info": {
+    "name": "Finance Backend API",
+    "description": "Complete Postman collection for Finance Data Processing and Access Control Backend.\n\n## Setup\n1. Set `baseUrl` variable to `http://localhost:3000`\n2. Run **Auth / Register** or **Auth / Login (Admin)** first\n3. The token is automatically saved to `authToken` variable\n4. All protected routes use `authToken` automatically\n\n## Test Flow\n1. Login as Admin → get token\n2. Register a new Viewer user\n3. Promote Viewer to Analyst\n4. Create financial records\n5. Run dashboard queries",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "recordId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "description": "Health check and system status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "health"]
+            },
+            "description": "Check if the server and database are running correctly."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is healthy', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.status).to.equal('healthy');",
+                  "  pm.expect(json.data.database.status).to.equal('connected');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints — register, login, logout, me",
+      "item": [
+        {
+          "name": "Register (New Viewer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Viewer\",\n  \"email\": \"viewer@example.com\",\n  \"password\": \"Password1\",\n  \"confirmPassword\": \"Password1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Register a new user. Default role is 'viewer'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Returns user and token', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.token).to.be.a('string');",
+                  "  pm.expect(json.data.user.role).to.equal('viewer');",
+                  "  pm.collectionVariables.set('authToken', json.data.token);",
+                  "  pm.collectionVariables.set('userId', json.data.user.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Register (Validation Error)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"J\",\n  \"email\": \"not-an-email\",\n  \"password\": \"weak\",\n  \"confirmPassword\": \"mismatch\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Should return 422 validation error with field-level details."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test('Returns validation error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.false;",
+                  "  pm.expect(json.error.code).to.equal('VALIDATION_ERROR');",
+                  "  pm.expect(json.error.details).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@finance.dev\",\n  \"password\": \"Admin@12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Login as seeded admin. Token is auto-saved to authToken variable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns token and admin user', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.token).to.be.a('string');",
+                  "  pm.expect(json.data.user.role).to.equal('admin');",
+                  "  pm.collectionVariables.set('authToken', json.data.token);",
+                  "  pm.collectionVariables.set('userId', json.data.user.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Login (Wrong Password)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@finance.dev\",\n  \"password\": \"WrongPassword1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Should return 401 with vague error message."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Returns unauthorized error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.false;",
+                  "  pm.expect(json.error.code).to.equal('UNAUTHORIZED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get Current User (/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Get the currently authenticated user. Always fetches fresh from DB."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns current user', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.have.property('email');",
+                  "  pm.expect(json.data).to.not.have.property('password');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get Current User (No Token)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Should return 401 when no token is provided."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Returns unauthorized', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.false;",
+                  "  pm.expect(json.error.code).to.equal('UNAUTHORIZED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Clears the HttpOnly auth cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Logout successful', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User management — admin only except GET single user",
+      "item": [
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "Admin only. Returns paginated list of all users."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns paginated users', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.data).to.be.an('array');",
+                  "  pm.expect(json.data.pagination).to.have.property('total');",
+                  "  pm.expect(json.data.pagination).to.have.property('totalPages');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Users (Filter by Role)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?role=viewer&status=active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"],
+              "query": [
+                { "key": "role", "value": "viewer" },
+                { "key": "status", "value": "active" }
+              ]
+            },
+            "description": "Filter users by role and status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('All returned users are viewers', () => {",
+                  "  const json = pm.response.json();",
+                  "  json.data.data.forEach(user => {",
+                  "    pm.expect(user.role).to.equal('viewer');",
+                  "    pm.expect(user.status).to.equal('active');",
+                  "  });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Users (Search)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?search=admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"],
+              "query": [
+                { "key": "search", "value": "admin" }
+              ]
+            },
+            "description": "Search users by name or email."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Single User",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}"]
+            },
+            "description": "Admin can fetch any user. Viewers/analysts can only fetch themselves."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns user without password', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.have.property('id');",
+                  "  pm.expect(json.data).to.not.have.property('password');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get User (Not Found)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/000000000000000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "000000000000000000000000"]
+            },
+            "description": "Should return 404 for non-existent user."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Returns not found error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('NOT_FOUND');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"analyst\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}", "role"]
+            },
+            "description": "Admin only. Promote or demote a user's role.\n\nReplace {{userId}} with a real user ID (not the admin's own ID)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Role updated successfully', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.role).to.equal('analyst');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update User Role (Invalid Role)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"superadmin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}", "role"]
+            },
+            "description": "Should return 422 validation error."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test('Validation error for invalid role', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('VALIDATION_ERROR');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update User Status (Deactivate)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"inactive\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}", "status"]
+            },
+            "description": "Admin only. Deactivate a user account.\n\nReplace {{userId}} with a non-admin user ID."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Status updated to inactive', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.status).to.equal('inactive');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update User Status (Reactivate)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}", "status"]
+            },
+            "description": "Admin only. Reactivate a deactivated user."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}"]
+            },
+            "description": "Admin only. Hard deletes a user.\n\n⚠️ Replace {{userId}} with a non-admin user ID.\nCannot delete the last admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('User deleted', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.be.null;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Users (Non-Admin Forbidden)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer VIEWER_TOKEN_HERE" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"]
+            },
+            "description": "Should return 403 when a viewer or analyst tries to list all users.\n\nReplace VIEWER_TOKEN_HERE with a viewer/analyst token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test('Returns forbidden error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('FORBIDDEN');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Records",
+      "description": "Financial records — CRUD with filters, sorting, pagination, soft delete",
+      "item": [
+        {
+          "name": "Create Record (Income)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000.00,\n  \"type\": \"income\",\n  \"category\": \"salary\",\n  \"date\": \"2025-01-15T00:00:00.000Z\",\n  \"note\": \"January salary payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"]
+            },
+            "description": "Create an income record. Requires analyst or admin role."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Record created with correct data', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.type).to.equal('income');",
+                  "  pm.expect(json.data.amount).to.equal(5000);",
+                  "  pm.expect(json.data.category).to.equal('salary');",
+                  "  pm.collectionVariables.set('recordId', json.data.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Create Record (Expense)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1200.50,\n  \"type\": \"expense\",\n  \"category\": \"rent\",\n  \"date\": \"2025-01-01T00:00:00.000Z\",\n  \"note\": \"January rent payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"]
+            },
+            "description": "Create an expense record."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Expense record created', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data.type).to.equal('expense');",
+                  "  pm.expect(json.data.amount).to.equal(1200.50);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Create Record (Freelance Income)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 2500.00,\n  \"type\": \"income\",\n  \"category\": \"freelance\",\n  \"date\": \"2025-02-10T00:00:00.000Z\",\n  \"note\": \"Website project payment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"]
+            },
+            "description": "Create a freelance income record for February."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Record (Food Expense)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 350.75,\n  \"type\": \"expense\",\n  \"category\": \"food\",\n  \"date\": \"2025-01-20T00:00:00.000Z\",\n  \"note\": \"Grocery shopping\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"]
+            },
+            "description": "Create a food expense record."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Record (Validation Error)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": -100,\n  \"type\": \"unknown\",\n  \"category\": \"invalid-category\",\n  \"date\": \"not-a-date\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"]
+            },
+            "description": "Should return 422 with field-level validation errors."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test('Returns validation details', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('VALIDATION_ERROR');",
+                  "  pm.expect(json.error.details).to.be.an('array').with.length.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Records (All)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            },
+            "description": "List all records for the current user with pagination."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns paginated records', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.data).to.be.an('array');",
+                  "  pm.expect(json.data.pagination).to.have.all.keys(",
+                  "    'total', 'page', 'limit', 'totalPages', 'hasNext', 'hasPrev'",
+                  "  );",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Records (Filter by Type)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records?type=income",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"],
+              "query": [
+                { "key": "type", "value": "income" }
+              ]
+            },
+            "description": "Filter records by type (income or expense)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('All records are income type', () => {",
+                  "  const json = pm.response.json();",
+                  "  json.data.data.forEach(record => {",
+                  "    pm.expect(record.type).to.equal('income');",
+                  "  });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Records (Filter by Category)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records?category=salary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"],
+              "query": [
+                { "key": "category", "value": "salary" }
+              ]
+            },
+            "description": "Filter records by category."
+          },
+          "response": []
+        },
+        {
+          "name": "List Records (Date Range)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records?startDate=2025-01-01T00:00:00.000Z&endDate=2025-01-31T23:59:59.000Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"],
+              "query": [
+                { "key": "startDate", "value": "2025-01-01T00:00:00.000Z" },
+                { "key": "endDate", "value": "2025-01-31T23:59:59.000Z" }
+              ]
+            },
+            "description": "Filter records by date range."
+          },
+          "response": []
+        },
+        {
+          "name": "List Records (Sort by Amount DESC)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records?sortField=amount&sortOrder=desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"],
+              "query": [
+                { "key": "sortField", "value": "amount" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            },
+            "description": "Sort records by amount descending."
+          },
+          "response": []
+        },
+        {
+          "name": "List Records (Combined Filters)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records?type=expense&startDate=2025-01-01T00:00:00.000Z&endDate=2025-01-31T23:59:59.000Z&sortField=amount&sortOrder=desc&page=1&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"],
+              "query": [
+                { "key": "type", "value": "expense" },
+                { "key": "startDate", "value": "2025-01-01T00:00:00.000Z" },
+                { "key": "endDate", "value": "2025-01-31T23:59:59.000Z" },
+                { "key": "sortField", "value": "amount" },
+                { "key": "sortOrder", "value": "desc" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            },
+            "description": "Use all filters together: type, date range, sort, pagination."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Single Record",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records/{{recordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records", "{{recordId}}"]
+            },
+            "description": "Get a single record by ID. recordId is set automatically after creating a record."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns correct record', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.id).to.equal(pm.collectionVariables.get('recordId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get Record (Invalid ID)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records/invalid-id-format",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records", "invalid-id-format"]
+            },
+            "description": "Should return 400 for invalid ObjectId format."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Returns bad request error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('BAD_REQUEST');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update Record (Partial)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5500.00,\n  \"note\": \"January salary with performance bonus\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records/{{recordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records", "{{recordId}}"]
+            },
+            "description": "Partially update a record. Only provided fields are updated."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Record updated correctly', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data.amount).to.equal(5500);",
+                  "  pm.expect(json.data.updatedBy).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update Record (Empty Body)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records/{{recordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records", "{{recordId}}"]
+            },
+            "description": "Should return 422 — at least one field required for update."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete Record (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records/{{recordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records", "{{recordId}}"]
+            },
+            "description": "Soft deletes a record — sets isDeleted=true, does not remove from DB."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Record deleted successfully', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.success).to.be.true;",
+                  "  pm.expect(json.data).to.be.null;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get Deleted Record (Should 404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records/{{recordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records", "{{recordId}}"]
+            },
+            "description": "After soft delete, fetching the record should return 404."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Deleted record not found', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('NOT_FOUND');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "description": "Aggregation endpoints — analyst and admin only (except recent)",
+      "item": [
+        {
+          "name": "Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "summary"]
+            },
+            "description": "Returns total income, expenses, net balance, and record counts."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Summary has all required fields', () => {",
+                  "  const json = pm.response.json();",
+                  "  const d = json.data;",
+                  "  pm.expect(d).to.have.all.keys(",
+                  "    'totalIncome', 'totalExpenses', 'netBalance',",
+                  "    'totalRecords', 'incomeCount', 'expenseCount'",
+                  "  );",
+                  "  pm.expect(d.netBalance).to.equal(",
+                  "    Math.round((d.totalIncome - d.totalExpenses) * 100) / 100",
+                  "  );",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Summary (With Date Range)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/summary?startDate=2025-01-01T00:00:00.000Z&endDate=2025-01-31T23:59:59.000Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "summary"],
+              "query": [
+                { "key": "startDate", "value": "2025-01-01T00:00:00.000Z" },
+                { "key": "endDate", "value": "2025-01-31T23:59:59.000Z" }
+              ]
+            },
+            "description": "Summary filtered to January 2025 only."
+          },
+          "response": []
+        },
+        {
+          "name": "Category Totals",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "categories"]
+            },
+            "description": "Returns category-wise totals with percentages, split into income and expense groups."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns income and expense categories', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('income');",
+                  "  pm.expect(json.data).to.have.property('expense');",
+                  "  pm.expect(json.data.income).to.be.an('array');",
+                  "  pm.expect(json.data.expense).to.be.an('array');",
+                  "});",
+                  "pm.test('Categories have percentage field', () => {",
+                  "  const json = pm.response.json();",
+                  "  const allCategories = [...json.data.income, ...json.data.expense];",
+                  "  if (allCategories.length > 0) {",
+                  "    pm.expect(allCategories[0]).to.have.property('percentage');",
+                  "    pm.expect(allCategories[0]).to.have.property('total');",
+                  "    pm.expect(allCategories[0]).to.have.property('count');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Category Totals (With Date Range)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/categories?startDate=2025-01-01T00:00:00.000Z&endDate=2025-03-31T23:59:59.000Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "categories"],
+              "query": [
+                { "key": "startDate", "value": "2025-01-01T00:00:00.000Z" },
+                { "key": "endDate", "value": "2025-03-31T23:59:59.000Z" }
+              ]
+            },
+            "description": "Category totals for Q1 2025."
+          },
+          "response": []
+        },
+        {
+          "name": "Monthly Trends (Default 6 Months)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/trends",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "trends"]
+            },
+            "description": "Returns monthly income vs expense trends for the last 6 months."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Trends have correct shape', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "  if (json.data.length > 0) {",
+                  "    const first = json.data[0];",
+                  "    pm.expect(first).to.have.all.keys(",
+                  "      'year', 'month', 'monthName', 'income', 'expenses', 'net'",
+                  "    );",
+                  "    pm.expect(first.monthName).to.be.a('string');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Monthly Trends (Last 12 Months)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/trends?months=12",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "trends"],
+              "query": [
+                { "key": "months", "value": "12" }
+              ]
+            },
+            "description": "Returns last 12 months of trends."
+          },
+          "response": []
+        },
+        {
+          "name": "Monthly Trends (Custom Date Range)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/trends?startDate=2025-01-01T00:00:00.000Z&endDate=2025-06-30T23:59:59.000Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "trends"],
+              "query": [
+                { "key": "startDate", "value": "2025-01-01T00:00:00.000Z" },
+                { "key": "endDate", "value": "2025-06-30T23:59:59.000Z" }
+              ]
+            },
+            "description": "Trends for H1 2025."
+          },
+          "response": []
+        },
+        {
+          "name": "Recent Transactions (Default 10)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/recent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "recent"]
+            },
+            "description": "Returns 10 most recent transactions. Available to all roles."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns array of transactions', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.be.an('array');",
+                  "  pm.expect(json.data.length).to.be.at.most(10);",
+                  "});",
+                  "pm.test('Transactions have required fields', () => {",
+                  "  const json = pm.response.json();",
+                  "  if (json.data.length > 0) {",
+                  "    const t = json.data[0];",
+                  "    pm.expect(t).to.have.property('id');",
+                  "    pm.expect(t).to.have.property('amount');",
+                  "    pm.expect(t).to.have.property('type');",
+                  "    pm.expect(t).to.have.property('category');",
+                  "    pm.expect(t).to.have.property('date');",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Recent Transactions (Custom Limit)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/recent?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "recent"],
+              "query": [
+                { "key": "limit", "value": "5" }
+              ]
+            },
+            "description": "Returns last 5 transactions."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returns at most 5 transactions', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data.length).to.be.at.most(5);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Summary (Viewer Forbidden)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer VIEWER_TOKEN_HERE" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "dashboard", "summary"]
+            },
+            "description": "Viewers cannot access dashboard summary. Should return 403.\n\nReplace VIEWER_TOKEN_HERE with a viewer's token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test('Returns forbidden error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('FORBIDDEN');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "RBAC Edge Cases",
+      "description": "Tests that verify role-based access control is enforced correctly",
+      "item": [
+        {
+          "name": "Viewer Cannot Create Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer VIEWER_TOKEN_HERE" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100,\n  \"type\": \"income\",\n  \"category\": \"salary\",\n  \"date\": \"2025-01-01T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records"]
+            },
+            "description": "Viewers are read-only. Creating a record should return 403.\n\nReplace VIEWER_TOKEN_HERE with a viewer's token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test('Viewer cannot create records', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('FORBIDDEN');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Viewer Cannot Delete Record",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer VIEWER_TOKEN_HERE" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/records/{{recordId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "records", "{{recordId}}"]
+            },
+            "description": "Viewers cannot delete records. Should return 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Admin Cannot Delete Own Account",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}"]
+            },
+            "description": "Admin cannot delete their own account. Should return 400.\n\nMake sure {{userId}} is set to the admin's own ID."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Cannot delete own account', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('BAD_REQUEST');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Admin Cannot Change Own Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"viewer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "{{userId}}", "role"]
+            },
+            "description": "Admin cannot change their own role. Should return 400.\n\nMake sure {{userId}} is set to the admin's own ID."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Cannot change own role', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('BAD_REQUEST');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Expired / Invalid Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer invalid.token.here" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Should return 401 with INVALID_TOKEN error code."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Returns invalid token error', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error.code).to.equal('INVALID_TOKEN');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}
